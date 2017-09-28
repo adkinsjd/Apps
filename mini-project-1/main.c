@@ -2,7 +2,8 @@
 #include <rtt_stdio.h>
 #include "xtimer.h"
 #include <string.h>
-#include "saul_reg.h"
+#include "periph/i2c.h"
+#include "periph/gpio.h"
 
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
@@ -11,90 +12,30 @@
 #define SAMPLE_INTERVAL ( 1000000UL)
 #endif
 
-saul_reg_t *sensor_radtemp_t = NULL;
-saul_reg_t *sensor_temp_t    = NULL;
-saul_reg_t *sensor_hum_t     = NULL;
-saul_reg_t *sensor_mag_t     = NULL;
-saul_reg_t *sensor_accel_t   = NULL;
-saul_reg_t *sensor_light_t   = NULL;
-saul_reg_t *sensor_occup_t   = NULL;
-saul_reg_t *sensor_button_t  = NULL;
+#define ACCEL_ADDRESS 0x4C
+#define TEMP_ADDRESS 0x49
 
-void critical_error(void) {
-    DEBUG("CRITICAL ERROR, REBOOT\n");
-    NVIC_SystemReset();
-    return;
-}
+void sensor_shutdown(void) {
 
-void sensor_config(void) {
-    sensor_radtemp_t = saul_reg_find_type(SAUL_SENSE_RADTEMP);
-    if (sensor_radtemp_t == NULL) {
-        DEBUG("[ERROR] Failed to init RADTEMP sensor\n");
-        critical_error();
-    } else {
-        DEBUG("TEMP sensor OK\n");
-    }
+    //init devices
+    i2c_acquire(I2C_0);
+    i2c_init_master(I2C_0, I2C_SPEED_NORMAL);
+    gpio_init(GPIO_PIN(0,28), GPIO_OUT);
 
-    sensor_hum_t     = saul_reg_find_type(SAUL_SENSE_HUM);
-    if (sensor_hum_t == NULL) {
-        DEBUG("[ERROR] Failed to init HUM sensor\n");
-        critical_error();
-    } else {
-        DEBUG("HUM sensor OK\n");
-    }
+    //accelerometer - standby 0x07=0x00
+    i2c_write_reg(I2C_0,ACCEL_ADDRESS,0x07,0x00);    
 
-    sensor_temp_t    = saul_reg_find_type(SAUL_SENSE_TEMP);
-    if (sensor_temp_t == NULL) {
-		DEBUG("[ERROR] Failed to init TEMP sensor\n");
-		critical_error();
-	} else {
-		DEBUG("TEMP sensor OK\n");
-	}
+    //light sensor
+    //set the shutdown pin high
+    gpio_write(GPIO_PIN(0, 28), 1); 
 
-    sensor_mag_t     = saul_reg_find_type(SAUL_SENSE_MAG);
-    if (sensor_mag_t == NULL) {
-		DEBUG("[ERROR] Failed to init MAGNETIC sensor\n");
-		critical_error();
-	} else {
-		DEBUG("MAGNETIC sensor OK\n");
-	}
-
-    sensor_accel_t   = saul_reg_find_type(SAUL_SENSE_ACCEL);
-    if (sensor_accel_t == NULL) {
-		DEBUG("[ERROR] Failed to init ACCEL sensor\n");
-		critical_error();
-	} else {
-		DEBUG("ACCEL sensor OK\n");
-	}
-
-    sensor_light_t   = saul_reg_find_type(SAUL_SENSE_LIGHT);
-	if (sensor_light_t == NULL) {
-		DEBUG("[ERROR] Failed to init LIGHT sensor\n");
-		critical_error();
-	} else {
-		DEBUG("LIGHT sensor OK\n");
-	}
-
-    sensor_occup_t   = saul_reg_find_type(SAUL_SENSE_OCCUP);
-	if (sensor_occup_t == NULL) {
-		DEBUG("[ERROR] Failed to init OCCUP sensor\n");
-		critical_error();
-	} else {
-		DEBUG("OCCUP sensor OK\n");
-	}
-
-    sensor_button_t  = saul_reg_find_type(SAUL_SENSE_BTN);
-    if (sensor_button_t == NULL) {
-        DEBUG("[ERROR] Failed to init BUTTON sensor\n");
-        critical_error();
-    } else {
-        DEBUG("BUTTON sensor OK\n");
-    }
+    //temperature sensor
+    i2c_write_reg(I2C_0,TEMP_ADDRESS,0x01,0x01);    
 }
 
 int main(void) {
     uint16_t wakeup_count = 0;
-    sensor_config();
+    sensor_shutdown();
 
     while (1) {
 		xtimer_usleep(SAMPLE_INTERVAL);
