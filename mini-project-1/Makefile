@@ -1,5 +1,5 @@
 APPLICATION = mini-project-1
-RIOTBASE ?= /home/hskim/Desktop/RIOT-OS
+RIOTBASE ?= /home/adkins/Research/cs294-144/RIOT-OS
 BOARD = hamilton
 
 # System functions
